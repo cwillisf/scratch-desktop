@@ -116,6 +116,14 @@ const calculateTargets = function (wrapperConfig) {
         windowsDirectDownload: {
             name: 'nsis:ia32',
             platform: 'win32'
+        },
+        pacmanArm64: {
+            name: 'pacman:arm64',
+            platform: 'linux'
+        },
+        debArm64: {
+            name: 'deb:arm64',
+            platform: 'linux'
         }
     };
     const targets = [];
@@ -143,6 +151,9 @@ const calculateTargets = function (wrapperConfig) {
             console.log(`skipping target "${availableTargets.macAppStore.name}" because code-signing is disabled`);
         }
         targets.push(availableTargets.macDirectDownload);
+        break;
+    case 'linux':
+        targets.push(availableTargets.pacmanArm64, availableTargets.debArm64);
         break;
     default:
         throw new Error(`Could not determine targets for platform: ${process.platform}`);
