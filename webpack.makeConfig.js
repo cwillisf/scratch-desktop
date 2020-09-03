@@ -1,9 +1,8 @@
-const childProcess = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const util = require('util');
 
-const electronPath = require('electron');
+const electronVersion = require('electron/package.json').version.trim();
 const webpack = require('webpack');
 const merge = require('webpack-merge');
 
@@ -14,7 +13,6 @@ const postcssImport = require('postcss-import');
 
 const isProduction = (process.env.NODE_ENV === 'production');
 
-const electronVersion = childProcess.execSync(`${electronPath} --version`, {encoding: 'utf8'}).trim();
 console.log(`Targeting Electron ${electronVersion}`); // eslint-disable-line no-console
 
 const makeConfig = function (defaultConfig, options) {
