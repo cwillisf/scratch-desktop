@@ -17,7 +17,14 @@ const isProduction = (process.env.NODE_ENV === 'production');
 const electronVersion = childProcess.execSync(`${electronPath} --version`, {encoding: 'utf8'}).trim();
 console.log(`Targeting Electron ${electronVersion}`); // eslint-disable-line no-console
 
-const makeConfig = function (defaultConfig, options) {
+const makeConfig = function (defaultConfig, {
+    babelPaths,
+    disableDefaultRulesForExtensions,
+    name: configName,
+    plugins,
+    useReact,
+    ...configOverrides
+}) {
     const babelOptions = {
         // Explicitly disable babelrc so we don't catch various config in much lower dependencies.
         babelrc: false,
@@ -31,8 +38,8 @@ const makeConfig = function (defaultConfig, options) {
         ]
     };
 
-    const sourceFileTest = options.useReact ? /\.jsx?$/ : /\.js$/;
-    if (options.useReact) {
+    const sourceFileTest = useReact ? /\.jsx?$/ : /\.js$/;
+    if (useReact) {
         babelOptions.presets = babelOptions.presets.concat('@babel/preset-react');
         babelOptions.plugins.push(['react-intl', {
             messagesDir: './translations/messages/'
@@ -40,7 +47,7 @@ const makeConfig = function (defaultConfig, options) {
     }
 
     // TODO: consider adjusting these rules instead of discarding them in at least some cases
-    if (options.disableDefaultRulesForExtensions) {
+    if (disableDefaultRulesForExtensions) {
         defaultConfig.module.rules = defaultConfig.module.rules.filter(rule => {
             if (!(rule.test instanceof RegExp)) {
                 // currently we don't support overriding other kinds of rules
@@ -49,11 +56,11 @@ const makeConfig = function (defaultConfig, options) {
             // disable default rules for any file extension listed here
             // we will handle these files in some other way (see below)
             // OR we want to avoid any processing at all (such as with fonts)
-            const shouldDisable = options.disableDefaultRulesForExtensions.some(
+            const shouldDisable = disableDefaultRulesForExtensions.some(
                 ext => rule.test.test(`test.${ext}`)
             );
             const statusWord = shouldDisable ? 'Discarding' : 'Keeping';
-            console.log(`${options.name}: ${statusWord} electron-webpack default rule for ${rule.test}`);
+            console.log(`${configName}: ${statusWord} electron-webpack default rule for ${rule.test}`);
             return !shouldDisable;
         });
     }
@@ -65,7 +72,7 @@ const makeConfig = function (defaultConfig, options) {
             rules: [
                 {
                     test: sourceFileTest,
-                    include: options.babelPaths,
+                    include: babelPaths,
                     loader: 'babel-loader',
                     options: babelOptions
                 },
@@ -108,7 +115,7 @@ const makeConfig = function (defaultConfig, options) {
             new webpack.SourceMapDevToolPlugin({
                 filename: '[file].map'
             })
-        ].concat(options.plugins || []),
+        ].concat(plugins || []),
         resolve: {
             cacheWithContext: false,
             symlinks: false,
@@ -118,7 +125,7 @@ const makeConfig = function (defaultConfig, options) {
                 'scratch-gui$': path.resolve(__dirname, 'node_modules', 'scratch-gui', 'src', 'index.js')
             }
         }
-    });
+    }, configOverrides);
 
     // If we're not on CI, enable Webpack progress output
     // Note that electron-webpack enables this by default, so use '--no-progress' to avoid double-adding this plugin
@@ -127,8 +134,12 @@ const makeConfig = function (defaultConfig, options) {
     }
 
     fs.writeFileSync(
-        `dist/webpack.${options.name}.js`,
+        `dist/webpack.${configName}.js`,
         `module.exports = ${util.inspect(config, {depth: null})};\n`
+    );
+    fs.writeFileSync(
+        `dist/webpack.${configName}.default.js`,
+        `module.exports = ${util.inspect(defaultConfig, {depth: null})};\n`
     );
 
     return config;
